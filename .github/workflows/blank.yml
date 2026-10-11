@@ -1,0 +1,120 @@
+name: 💻 PC Virtual com Login (GitHub Actions)
+
+on:
+  workflow_dispatch: # Permite rodar manualmente na aba Actions
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  executar-pc-virtual:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configurar ambiente Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependência PyYAML
+        run: pip install pyyaml
+
+      - name: Executar o PC Virtual com Autenticação
+        run: |
+          python3 - << 'EOF'
+          import yaml
+
+          # Configuração YAML contendo as credenciais de acesso
+          config_yaml = """
+          maquina_virtual:
+            nome: "PC-Seguro-GitHub"
+            versao: "1.0"
+            autenticacao:
+              usuario: "felipe12345"
+              senha: "MinhaSenha123!"
+            configuracao:
+              tamanho_memoria: 256
+              registradores_iniciais:
+                pc: 0
+                acc: 0
+            programa:
+              - instrucao: "LOAD"
+                operando: 15
+              - instrucao: "ADD"
+                operando: 25
+              - instrucao: "PRINT"
+              - instrucao: "HALT"
+          """
+
+          class YAMLVirtualPC:
+              def __init__(self, config_data):
+                  self.config = yaml.safe_load(config_data)
+                  vm_meta = self.config['maquina_virtual']
+                  self.nome = vm_meta['nome']
+                  
+                  # Pega as credenciais definidas no YAML
+                  auth = vm_meta.get('autenticacao', {})
+                  self.user_esperado = auth.get('usuario')
+                  self.senha_esperada = auth.get('senha')
+
+              def autenticar(self, usuario_informado, senha_informada):
+                  print(f"--- Tentativa de Login no {self.nome} ---")
+                  if usuario_informado == self.user_esperado and senha_informada == self.senha_esperada:
+                      print(f"✅ Acesso concedido! Bem-vindo, {usuario_informado}.\n")
+                      return True
+                  else:
+                      print("❌ Erro: Credenciais inválidas. Acesso negado.")
+                      return False
+
+              def run_program(self):
+                  vm_cfg = self.config['maquina_virtual']['configuracao']
+                  memory = [0] * vm_cfg['tamanho_memoria']
+                  pc = vm_cfg['registradores_iniciais']['pc']
+                  acc = vm_cfg['registradores_iniciais']['acc']
+                  
+                  # Build do programa na memória
+                  program_def = self.config['maquina_virtual']['programa']
+                  opcode_map = {"LOAD": 1, "ADD": 2, "PRINT": 3, "HALT": 4}
+                  
+                  index = 0
+                  for item in program_def:
+                      inst = item['instrucao']
+                      op = item.get('operando')
+                      if inst in opcode_map:
+                        memory[index] = opcode_map[inst]
+                        index += 1
+                        if op is not None:
+                            memory[index] = op
+                            index += 1
+
+                  # Ciclo de Execução
+                  running = True
+                  print(f"--- Iniciando Execução do Sistema ---")
+                  while running and pc < len(memory):
+                      opcode = memory[pc]
+                      
+                      if opcode == 1:
+                          pc += 1
+                          acc = memory[pc]
+                      elif opcode == 2:
+                          pc += 1
+                          acc += memory[pc]
+                      elif opcode == 3:
+                          print(f"[Saída da Tela]: {acc}")
+                      elif opcode == 4:
+                          running = False
+                          print(f"--- {self.nome} Desligado com Sucesso ---")
+                      
+                      pc += 1
+
+          if __name__ == "__main__":
+              computador = YAMLVirtualPC(config_yaml)
+              
+              # Simulando a entrada das credenciais solicitadas
+              usuario_digitado = "felipe12345"
+              senha_digitada = "MinhaSenha123!"
+              
+              # Executa a autenticação antes de rodar o programa
+              if computador.autenticar(usuario_digitado, senha_digitada):
+                  computador.run_program()
+          EOF
+          
